@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>PROJECT PHANTOM</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071018;color:#eafaff;font-family:Arial}canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 8px #000}
+#brand{position:absolute;top:18px;left:20px;font-weight:900;letter-spacing:4px;color:#8df5ff}
+#hint{position:absolute;top:52px;left:20px;font-size:12px;color:#c1d8df}
+#controls{position:absolute;bottom:20px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:end}
+.pad{pointer-events:auto;width:116px;height:116px;border:1px solid #8df5ff88;border-radius:50%;background:#0c293b88;display:grid;place-items:center;touch-action:none}
+#stick{width:42px;height:42px;border-radius:50%;background:#8df5ffbb}
+.actions{display:flex;gap:12px;pointer-events:auto}
+button{border:1px solid #8df5ff99;border-radius:50%;width:68px;height:68px;background:#0c293bcc;color:white;font-weight:bold}
+#start{position:absolute;inset:0;background:linear-gradient(#06121add,#071018ee);display:grid;place-items:center;pointer-events:auto}
+#start section{text-align:center;padding:28px}
+#start h1{letter-spacing:8px;font-size:clamp(28px,7vw,64px);margin:0;color:#9cf7ff}
+#start p{color:#c6d9df}
+#start button{border-radius:8px;width:auto;height:auto;padding:14px 30px;background:#0c3548}
+</style></head><body>
+<div id="hud"><div id="brand">PROJECT PHANTOM</div><div id="hint">OPEN WORLD • PROTOTYPE 0.1</div><div id="controls"><div class="pad" id="pad"><div id="stick"></div></div><div class="actions"><button id="sprint">RUN</button><button id="action">DRIVE</button></div></div></div>
+<div id="start"><section><h1>PHANTOM CITY</h1><p>Explore the city. Find your ride.</p><button id="play">ENTER WORLD</button></section></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+<script>
+(()=>{
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x8ab4c5);scene.fog=new THREE.Fog(0x8ab4c5,45,180);
+const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,500);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.shadowMap.enabled=true;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xc9edff,0x29323c,2));const sun=new THREE.DirectionalLight(0xffedcf,2.3);sun.position.set(-35,60,25);sun.castShadow=true;scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshStandardMaterial({color:0x293b40,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const roadMat=new THREE.MeshStandardMaterial({color:0x202a30});
+for(let i=-5;i<=5;i++){let road=new THREE.Mesh(new THREE.BoxGeometry(12,.08,500),roadMat);road.position.set(i*34,.04,0);scene.add(road);let cross=new THREE.Mesh(new THREE.BoxGeometry(500,.08,12),roadMat);cross.position.set(0,.045,i*34);scene.add(cross)}
+const colors=[0x536d7b,0x8b7467,0x3f5960,0x9b9b8a,0x34434e,0x6d7785];
+for(let x=-5;x<=5;x++)for(let z=-5;z<=5;z++){if(Math.random()<.13)continue;let h=8+Math.random()*34,w=8+Math.random()*10,d=8+Math.random()*10;let b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:colors[Math.floor(Math.random()*colors.length)],roughness:.8}));b.position.set(x*34+(Math.random()-.5)*8,h/2,z*34+(Math.random()-.5)*8);b.castShadow=true;b.receiveShadow=true;scene.add(b);let roof=new THREE.Mesh(new THREE.BoxGeometry(w*.55,.5,d*.55),new THREE.MeshStandardMaterial({color:0x26343a}));roof.position.set(b.position.x,h+.25,b.position.z);scene.add(roof)}
+const player=new THREE.Group();const body=new THREE.Mesh(new THREE.CapsuleGeometry(.48,.9,4,8),new THREE.MeshStandardMaterial({color:0x111c28}));body.position.y=1.1;player.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.32,16,12),new THREE.MeshStandardMaterial({color:0xb98565}));head.position.y=1.95;player.add(head);scene.add(player);
+const car=new THREE.Group();const shell=new THREE.Mesh(new THREE.BoxGeometry(2.2,.65,4.2),new THREE.MeshStandardMaterial({color:0x00a9b8,metalness:.65,roughness:.25}));shell.position.y=.75;car.add(shell);const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.65,.7,1.9),new THREE.MeshStandardMaterial({color:0x172a35,metalness:.4,roughness:.2}));cabin.position.set(0,1.35,-.25);car.add(cabin);for(let x of [-1,1])for(let z of [-1.35,1.35]){let wheel=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.22,16),new THREE.MeshStandardMaterial({color:0x101214}));wheel.rotation.z=Math.PI/2;wheel.position.set(x,.4,z);car.add(wheel)}car.position.set(5,0,4);scene.add(car);
+let driving=false,run=false,moveX=0,moveY=0;const pad=document.getElementById('pad'),stick=document.getElementById('stick');let active=false;
+pad.addEventListener('pointerdown',e=>{active=true;pad.setPointerCapture(e.pointerId)});pad.addEventListener('pointermove',e=>{if(!active)return;let r=pad.getBoundingClientRect(),x=e.clientX-(r.left+r.width/2),y=e.clientY-(r.top+r.height/2),l=Math.max(1,Math.hypot(x,y)),s=Math.min(38,l);moveX=x/l*s/38;moveY=y/l*s/38;stick.style.transform='translate('+moveX*35+'px,'+moveY*35+'px)'});['pointerup','pointercancel'].forEach(t=>pad.addEventListener(t,()=>{active=false;moveX=moveY=0;stick.style.transform=''}));
+document.getElementById('sprint').onclick=()=>run=!run;
+document.getElementById('action').onclick=()=>{if(!driving&&player.position.distanceTo(car.position)<5){driving=true;player.visible=false}else if(driving){driving=false;player.visible=true;player.position.copy(car.position).add(new THREE.Vector3(3,0,0))}};
+document.getElementById('play').onclick=()=>document.getElementById('start').remove();
+let keys={};onkeydown=e=>keys[e.key.toLowerCase()]=true;onkeyup=e=>keys[e.key.toLowerCase()]=false;
+function loop(){requestAnimationFrame(loop);let forward=moveY||((keys.w||keys.arrowup)?-1:0)+((keys.s||keys.arrowdown)?1:0),side=moveX||((keys.d||keys.arrowright)?1:0)-((keys.a||keys.arrowleft)?1:0);let target=driving?car:player;let speed=driving?.24:(run?.18:.1);if(forward||side){let v=new THREE.Vector3(side,0,forward).normalize().multiplyScalar(speed);target.position.add(v);target.rotation.y=Math.atan2(v.x,v.z)}let focus=target.position;let back=new THREE.Vector3(0,6,driving?10:7).applyAxisAngle(new THREE.Vector3(0,1,0),target.rotation.y);camera.position.lerp(new THREE.Vector3(focus.x+back.x,focus.y+back.y,focus.z+back.z),.09);camera.lookAt(focus.x,focus.y+1,focus.z);renderer.render(scene,camera)}
+loop();onresize=()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+})();
+</script></body></html>
